@@ -27,6 +27,10 @@ export interface Patch {
 
 export interface PatchRecord {
 	id: string;
+	target: { 
+		parent: object; 
+		name: string | symbol
+	};
 	timestamp: number;
 	patch: Patch;
 	original: AnyFunction;
@@ -34,6 +38,10 @@ export interface PatchRecord {
 
 export interface InjectRecord {
 	id: string;
+	target: { 
+		parent: object; 
+		name: string | symbol
+	};
 	timestamp: number;
 	original: AnyFunction;
 	spec: InjectionSpec
@@ -45,7 +53,11 @@ export interface InjectionSpec {
 	loc: InjectLocation;
 }
 
-export type InjectLocation = 'before' | 'after'
+export type InjectLocation = 'before' | 'after';
+
+interface FunctionMeta {
+	allowInject: boolean;
+}
 
 
 
@@ -56,7 +68,7 @@ const patches = new Map<string, PatchRecord>();
 const injects = new Map<string, InjectRecord>();
 
 // For keeping track of inject attributes
-const functionMeta = new WeakMap<AnyFunction, { allowInject?: boolean }>();
+const functionMeta = new WeakMap<AnyFunction, FunctionMeta>();
 
 function getNewID(prefix: string = 'patch') {
 	return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
@@ -181,12 +193,26 @@ export function patchFunction(targetObject: object, functionName: string | symbo
 	// Create a patch record and store it
 	const record: PatchRecord = {
 		id: patchID,
+		target: {
+			parent: targetObject,
+			name: functionName
+		},
 		patch: patch,
 		timestamp: Date.now(),
 		original: originalFunction
 	}
 	patches.set(patchID, record);
 	return patchID;
+}
+
+export function undoPatch(patchID: string | symbol) {
+	const record: PatchRecord | undefined = patches.get(String(patchID));
+	if (!record) {
+		throw new Error(`Patch ID is not valid; ${String(patchID)}`);
+	}
+	const original: AnyFunction = record.original;
+	(record.target.parent as any)[record.target.name] = original;
+	patches.delete(String(patchID));
 }
 
 
@@ -207,6 +233,8 @@ function parseCodeBlockToStatements(code: string) {
   const stmts = ast.body[0].body.body;
   return stmts || [];
 }
+
+
 
 // ---------------- Injector API ---------------- //
 
@@ -286,6 +314,10 @@ export function injectFunction(targetObject: object, functionName: string | symb
 	// Create an inject record
 	const record: InjectRecord = {
 		id: injectID,
+		target: {
+			parent: targetObject,
+			name: functionName
+		},
 		timestamp: Date.now(),
 		original: originalFunction,
 		spec: injectSpec
@@ -293,4 +325,20 @@ export function injectFunction(targetObject: object, functionName: string | symb
 
 	injects.set(injectID, record);
 	return injectID;
+}
+
+/**
+ * Reverts the injection of a function property on an object/module.
+ * Throws an `Error` if the injection ID does not correspond to any record (i.e. if the function wasn't injected into).
+ * 
+ * @param injectID The ID that as used for the injection record.
+ */
+export function undoInject(injectID: string | symbol) {
+	const record: InjectRecord | undefined = injects.get(String(injectID));
+	if (!record) {
+		throw new Error(`Inject ID is not valid: '${String(injectID)}'`);
+	}
+	const original: AnyFunction = record.original;
+	(record.target.parent as any)[record.target.name] = original;
+	injects.delete(String(injectID));
 }

@@ -14,8 +14,9 @@ Harmonify.JS is a JavaScript/TypeScript port of the Harmonify library (pypi.org/
 * **Easy Unpatching:** Restore methods to their original state with a simple call.
 * **Function Patching:** Patch functions as easily as methods!
 * **Function and Method Hooking:** Use a *very* simple API to hook into any method (that is hookable)!
-* **Code Injection & Injection undo-ing:** Add you own code inside any JS/TS function or method and revert at any time.
+* **Code Injection:** Add you own code inside any JS/TS function or method and revert at any time.
   * *Note:* Be careful with code injection, and *do **not** inject code coming from a source you don't trust!* If you're a library developer and want to prevent your code from being injected into, use `noInject(<your function here>)` to prevent accidental and/or malicious injections. If you *want* your code to be injected into, you can also use the `allowInject(<your function here>)` for clarity.
+* **Patch and Injection Undo-ing:** Undo patches and injections with a singe function call using a simple record-based system!
 
 ## Installation
 
@@ -40,7 +41,7 @@ function getVersion(): string {
 ```
 
 #### index.ts
-```python
+```typescript
 import * as Harmonify from 'harmonify-js';
 import * as MyLibrary from './my_library';
 
@@ -49,7 +50,7 @@ let patch: Harmonify.Patch = {
         return "latest";
     }
 };
-Harmonify.patchFunction(MyLibrary, 'getVersion', patch)
+Harmonify.patchFunction(MyLibrary, 'getVersion', patch);
 ```
 
 
@@ -71,8 +72,8 @@ function restrictedAPI(uname: string, passwd: string) {
     return getPass(uname) === passwd;
 }
 
-Harmonify.allowInject(openAPI2)
-Harmonify.noInject(restrictedAPI)
+Harmonify.allowInject(openAPI2);
+Harmonify.noInject(restrictedAPI);
 ```
 
 #### main.ts
@@ -85,19 +86,19 @@ Harmonify.injectFunction(APILib, 'openAPI1', {
     line: 1,
     loc: 'after',
     code: 'console.log("Hello!")'
-})
+});
 
 // Inject Open API 2
 Harmonify.injectFunction(APILib, 'openAPI2', {
     line: 1,
     loc: 'after',
     code: 'console.log("Hello!")'
-})
+});
 
 // Inject Restriced API
 Harmonify.injectFunction(APILib, 'restrictedAPI', {
     line: 1,
     loc: 'before',
     code: 'console.log(`Stealing data for ${uname} (pass = ${getPass(uname)})`)'
-})
+});
 ```
