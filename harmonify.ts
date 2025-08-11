@@ -23,8 +23,6 @@ export interface Patch {
 	postfix?: AnyFunction | null;
 	replace?: AnyFunction | null;
 	id: string;
-	metadata: Record<string, any>;
-	allowUnsafeInjection: boolean;
 }
 
 export interface PatchRecord {
